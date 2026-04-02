@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tic-Tac-Toe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+      font-family: 'Segoe UI', sans-serif;
+      color: #eee;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      letter-spacing: 4px;
+      margin-bottom: 1.5rem;
+      text-transform: uppercase;
+      color: #e94560;
+      text-shadow: 0 0 20px rgba(233,69,96,0.5);
+    }
+
+    .mode-btns {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .mode-btn {
+      padding: 0.5rem 1.4rem;
+      border: 2px solid #e94560;
+      background: transparent;
+      color: #e94560;
+      border-radius: 30px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .mode-btn.active, .mode-btn:hover {
+      background: #e94560;
+      color: #fff;
+    }
+
+    .status {
+      font-size: 1.1rem;
+      margin-bottom: 1.2rem;
+      min-height: 1.6rem;
+      color: #a8dadc;
+      letter-spacing: 1px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 110px);
+      grid-template-rows: repeat(3, 110px);
+      gap: 10px;
+    }
+
+    .cell {
+      background: rgba(255,255,255,0.05);
+      border: 2px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      user-select: none;
+    }
+
+    .cell:hover:not(.taken) {
+      background: rgba(255,255,255,0.12);
+      transform: scale(1.04);
+    }
+
+    .cell.taken { cursor: default; }
+
+    .cell.X { color: #e94560; }
+    .cell.O { color: #a8dadc; }
+
+    .cell.winner-cell {
+      background: rgba(233,69,96,0.25);
+      border-color: #e94560;
+      animation: pulse 0.6s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { box-shadow: 0 0 0px rgba(233,69,96,0.4); }
+      to   { box-shadow: 0 0 18px rgba(233,69,96,0.9); }
+    }
+
+    .reset-btn {
+      margin-top: 1.8rem;
+      padding: 0.65rem 2rem;
+      background: #e94560;
+      color: #fff;
+      border: none;
+      border-radius: 30px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: opacity 0.2s;
+    }
+
+    .reset-btn:hover { opacity: 0.85; }
+
+    .scoreboard {
+      display: flex;
+      gap: 2.5rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .score-item {
+      text-align: center;
+    }
+
+    .score-item .label {
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #888;
+    }
+
+    .score-item .value {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+
+    .score-item.x .value { color: #e94560; }
+    .score-item.draw .value { color: #aaa; }
+    .score-item.o .value { color: #a8dadc; }
+  </style>
+</head>
+<body>
+  <h1>Tic-Tac-Toe</h1>
+
+  <div class="mode-btns">
+    <button class="mode-btn active" id="pvp-btn" onclick="setMode('pvp')">2 Players</button>
+    <button class="mode-btn" id="ai-btn" onclick="setMode('ai')">vs AI</button>
+  </div>
+
+  <div class="scoreboard">
+    <div class="score-item x">
+      <div class="label" id="x-label">Player X</div>
+      <div class="value" id="score-x">0</div>
+    </div>
+    <div class="score-item draw">
+      <div class="label">Draws</div>
+      <div class="value" id="score-draw">0</div>
+    </div>
+    <div class="score-item o">
+      <div class="label" id="o-label">Player O</div>
+      <div class="value" id="score-o">0</div>
+    </div>
+  </div>
+
+  <div class="status" id="status">Player X's turn</div>
+
+  <div class="board" id="board">
+    <div class="cell" onclick="handleClick(0)"></div>
+    <div class="cell" onclick="handleClick(1)"></div>
+    <div class="cell" onclick="handleClick(2)"></div>
+    <div class="cell" onclick="handleClick(3)"></div>
+    <div class="cell" onclick="handleClick(4)"></div>
+    <div class="cell" onclick="handleClick(5)"></div>
+    <div class="cell" onclick="handleClick(6)"></div>
+    <div class="cell" onclick="handleClick(7)"></div>
+    <div class="cell" onclick="handleClick(8)"></div>
+  </div>
+
+  <button class="reset-btn" onclick="reset()">New Game</button>
+
+  <script>
+    let currentPlayer = "X";
+    let mode = "pvp";
+    let gameOver = false;
+    let scores = { X: 0, O: 0, draw: 0 };
+
+    const cells = document.querySelectorAll(".cell");
+    const statusEl = document.getElementById("status");
+
+    function setMode(m) {
+      mode = m;
+      document.getElementById("pvp-btn").classList.toggle("active", m === "pvp");
+      document.getElementById("ai-btn").classList.toggle("active", m === "ai");
+      document.getElementById("o-label").textContent = m === "ai" ? "AI (O)" : "Player O";
+      reset();
+    }
+
+    async function handleClick(idx) {
+      if (gameOver) return;
+      const cell = cells[idx];
+      if (cell.classList.contains("taken")) return;
+
+      const res = await fetch("/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index: idx, player: currentPlayer }),
+      });
+      const data = await res.json();
+      if (data.error) return;
+
+      renderBoard(data.board);
+
+      if (data.winner) {
+        highlightWinner(data.combo);
+        scores[data.winner]++;
+        updateScores();
+        statusEl.textContent = data.winner === "O" && mode === "ai"
+          ? "AI wins!"
+          : `Player ${data.winner} wins!`;
+        gameOver = true;
+        return;
+      }
+
+      if (data.draw) {
+        scores.draw++;
+        updateScores();
+        statusEl.textContent = "It's a draw!";
+        gameOver = true;
+        return;
+      }
+
+      if (mode === "ai") {
+        currentPlayer = "X";
+        statusEl.textContent = "Player X's turn";
+      } else {
+        currentPlayer = currentPlayer === "X" ? "O" : "X";
+        statusEl.textContent = `Player ${currentPlayer}'s turn`;
+      }
+    }
+
+    function renderBoard(board) {
+      cells.forEach((cell, i) => {
+        cell.textContent = board[i] || "";
+        cell.className = "cell";
+        if (board[i]) {
+          cell.classList.add("taken", board[i]);
+        }
+      });
+    }
+
+    function highlightWinner(combo) {
+      combo.forEach(i => cells[i].classList.add("winner-cell"));
+    }
+
+    function updateScores() {
+      document.getElementById("score-x").textContent = scores.X;
+      document.getElementById("score-o").textContent = scores.O;
+      document.getElementById("score-draw").textContent = scores.draw;
+    }
+
+    async function reset() {
+      const res = await fetch("/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      });
+      const data = await res.json();
+      renderBoard(data.board);
+      currentPlayer = "X";
+      gameOver = false;
+      statusEl.textContent = "Player X's turn";
+    }
+  </script>
+</body>
+</html>
