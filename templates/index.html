@@ -9,139 +9,334 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg:           #0d0d14;
-      --surface:      rgba(255, 255, 255, 0.04);
-      --border:       rgba(255, 255, 255, 0.08);
-      --accent-x:     #7c3aed;
-      --accent-o:     #06b6d4;
-      --accent-x-glow: rgba(124, 58, 237, 0.35);
-      --accent-o-glow: rgba(6, 182, 212, 0.35);
-      --text-primary: #f1f5f9;
-      --text-muted:   #64748b;
-      --radius-cell:  16px;
-      --radius-pill:  100px;
+      --bg:            #0d0d14;
+      --surface:       rgba(255,255,255,0.04);
+      --border:        rgba(255,255,255,0.08);
+      --accent-x:      #7c3aed;
+      --accent-o:      #06b6d4;
+      --accent-x-glow: rgba(124,58,237,0.35);
+      --accent-o-glow: rgba(6,182,212,0.35);
+      --text-primary:  #f1f5f9;
+      --text-muted:    #64748b;
+      --radius-cell:   16px;
+      --radius-pill:   100px;
     }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);font-family:'Inter','Segoe UI',sans-serif;color:var(--text-primary);padding:1.5rem}
+    .app{width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center;gap:1.4rem}
+    h1{font-size:clamp(1.5rem,5vw,2rem);font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:linear-gradient(135deg,var(--accent-x),var(--accent-o));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    /* Mode Toggle */
+    .mode-toggle{position:relative;display:flex;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-pill);padding:4px}
+    .mode-option{position:relative;z-index:1;flex:1;padding:.45rem 1.2rem;border:none;background:transparent;color:var(--text-muted);font-family:inherit;font-size:.875rem;font-weight:600;border-radius:var(--radius-pill);cursor:pointer;transition:color .2s;white-space:nowrap}
+    .mode-option[aria-checked="true"]{color:var(--text-primary)}
+    .mode-pill{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);background:rgba(124,58,237,.25);border:1px solid var(--accent-x);border-radius:var(--radius-pill);transition:transform .25s cubic-bezier(.34,1.56,.64,1);pointer-events:none}
+    .mode-pill.right{transform:translateX(100%)}
 
-    body {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: var(--bg);
-      font-family: 'Inter', 'Segoe UI', sans-serif;
-      color: var(--text-primary);
-      padding: 1.5rem;
+    /* Scoreboard */
+    .scoreboard{display:flex;gap:.75rem;width:100%}
+    .score-card{flex:1;display:flex;flex-direction:column;align-items:center;gap:.25rem;padding:.75rem .5rem;background:var(--surface);border:1px solid var(--border);border-radius:14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+    .score-label{font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}
+    .score-value{font-size:1.8rem;font-weight:700;line-height:1}
+    .score-card.x .score-value{color:var(--accent-x)}
+    .score-card.draw .score-value{color:var(--text-muted)}
+    .score-card.o .score-value{color:var(--accent-o)}
+    @keyframes scorePop{0%{transform:scale(1)}40%{transform:scale(1.45)}100%{transform:scale(1)}}
+    .score-value.pop{animation:scorePop .22s ease-out forwards}
+
+    /* Turn Indicator */
+    .turn-indicator{display:flex;gap:.75rem;width:100%}
+    .player-badge{flex:1;display:flex;flex-direction:column;align-items:center;gap:.2rem;padding:.65rem .5rem;border-radius:14px;border:1px solid var(--border);background:var(--surface);transition:background .25s,border-color .25s,box-shadow .25s,opacity .25s;opacity:.45}
+    .player-badge.active{opacity:1}
+    .player-badge[data-player="X"].active{background:rgba(124,58,237,.12);border-color:var(--accent-x);box-shadow:0 0 16px var(--accent-x-glow)}
+    .player-badge[data-player="O"].active{background:rgba(6,182,212,.12);border-color:var(--accent-o);box-shadow:0 0 16px var(--accent-o-glow)}
+    .badge-symbol{font-size:1.3rem;font-weight:700;line-height:1}
+    .player-badge[data-player="X"] .badge-symbol{color:var(--accent-x)}
+    .player-badge[data-player="O"] .badge-symbol{color:var(--accent-o)}
+    .badge-label{font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)}
+    .badge-status{font-size:.72rem;font-weight:600;color:var(--text-primary);min-height:1em}
+    @keyframes dotPulse{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+    .ai-dots::before{content:'• • •';letter-spacing:.25em}
+    .ai-thinking .ai-dots::before{animation:dotPulse 1.2s ease-in-out infinite}
+
+    /* Board */
+    .board{display:grid;grid-template-columns:repeat(3,min(110px,28vw));grid-template-rows:repeat(3,min(110px,28vw));gap:clamp(6px,2vw,10px)}
+    .cell{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-cell);display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;transition:background .15s,border-color .15s,box-shadow .15s,opacity .3s;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+    .board[data-current-player="X"] .cell:not(.taken):hover{background:rgba(124,58,237,.1);border-color:rgba(124,58,237,.35)}
+    .board[data-current-player="O"] .cell:not(.taken):hover{background:rgba(6,182,212,.1);border-color:rgba(6,182,212,.35)}
+    .cell:not(.taken):active{transform:scale(.92)}
+    .cell.taken{cursor:default}
+    .cell.winner-cell[data-mark="X"]{background:rgba(124,58,237,.2);border-color:var(--accent-x);animation:pulseX .9s ease-in-out infinite alternate}
+    .cell.winner-cell[data-mark="O"]{background:rgba(6,182,212,.2);border-color:var(--accent-o);animation:pulseO .9s ease-in-out infinite alternate}
+    .cell.dim{opacity:.2}
+    @keyframes pulseX{from{box-shadow:0 0 0 rgba(124,58,237,0)}to{box-shadow:0 0 22px rgba(124,58,237,.7)}}
+    @keyframes pulseO{from{box-shadow:0 0 0 rgba(6,182,212,0)}to{box-shadow:0 0 22px rgba(6,182,212,.7)}}
+
+    /* SVG draw */
+    @keyframes drawLine{from{stroke-dashoffset:85}to{stroke-dashoffset:0}}
+    @keyframes drawCircle{from{stroke-dashoffset:201}to{stroke-dashoffset:0}}
+
+    /* New Game */
+    .new-game-btn{width:100%;padding:.8rem 2rem;background:var(--accent-x);color:#fff;border:none;border-radius:var(--radius-pill);font-family:inherit;font-size:.95rem;font-weight:700;letter-spacing:.06em;cursor:pointer;transition:background .2s,transform .1s}
+    .new-game-btn:hover{background:#6d28d9}
+    .new-game-btn:active{transform:scale(.97)}
+
+    /* Modal */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:100;padding:1.5rem;opacity:0;transition:opacity .25s}
+    .modal-overlay.visible{opacity:1}
+    .modal-overlay[hidden]{display:none}
+    .modal-card{position:relative;width:100%;max-width:340px;background:rgba(13,13,20,.92);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:2.5rem 2rem;display:flex;flex-direction:column;align-items:center;gap:.8rem;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 24px 80px rgba(0,0,0,.6);transform:scale(.85) translateY(20px);transition:transform .3s cubic-bezier(.34,1.56,.64,1);overflow:hidden}
+    .modal-overlay.visible .modal-card{transform:scale(1) translateY(0)}
+    .modal-icon{font-size:3.5rem;line-height:1}
+    .modal-title{font-size:1.5rem;font-weight:700;color:var(--text-primary);text-align:center}
+    .modal-play-again{margin-top:.5rem;padding:.7rem 2.2rem;background:var(--accent-x);color:#fff;border:none;border-radius:var(--radius-pill);font-family:inherit;font-size:.95rem;font-weight:700;cursor:pointer;transition:background .2s,transform .1s}
+    .modal-play-again:hover{background:#6d28d9}
+    .modal-play-again:active{transform:scale(.96)}
+
+    /* Confetti */
+    .confetti-particle{position:absolute;top:-10px;border-radius:3px;opacity:0;animation:fall linear forwards}
+    @keyframes fall{0%{opacity:1;transform:translateY(0) rotate(0deg)}80%{opacity:1}100%{opacity:0;transform:translateY(360px) rotate(720deg)}}
+
+    /* Reduced motion */
+    @media(prefers-reduced-motion:reduce){
+      *,*::before,*::after{animation-duration:.001ms!important;animation-delay:.001ms!important;transition-duration:.001ms!important}
+      .cell svg line,.cell svg circle{stroke-dashoffset:0!important}
+      .confetti-particle{display:none!important}
     }
-
-    .app {
-      width: 100%;
-      max-width: 420px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1.4rem;
+    /* Mobile */
+    @media(max-width:380px){
+      .turn-indicator,.scoreboard{gap:.4rem}
+      .badge-label,.score-label{font-size:.62rem}
     }
-
-    h1 {
-      font-size: clamp(1.5rem, 5vw, 2rem);
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      background: linear-gradient(135deg, var(--accent-x) 0%, var(--accent-o) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .sr-only {
-      position: absolute;
-      width: 1px; height: 1px;
-      padding: 0; margin: -1px;
-      overflow: hidden;
-      clip: rect(0,0,0,0);
-      white-space: nowrap;
-      border: 0;
-    }
-
-    /* ── Mode Toggle ── */
-    .mode-toggle {
-      position: relative;
-      display: flex;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-pill);
-      padding: 4px;
-      gap: 0;
-    }
-
-    .mode-option {
-      position: relative;
-      z-index: 1;
-      flex: 1;
-      padding: 0.45rem 1.2rem;
-      border: none;
-      background: transparent;
-      color: var(--text-muted);
-      font-family: inherit;
-      font-size: 0.875rem;
-      font-weight: 600;
-      border-radius: var(--radius-pill);
-      cursor: pointer;
-      transition: color 0.2s;
-      white-space: nowrap;
-    }
-
-    .mode-option[aria-checked="true"] { color: var(--text-primary); }
-
-    .mode-pill {
-      position: absolute;
-      top: 4px; bottom: 4px; left: 4px;
-      width: calc(50% - 4px);
-      background: rgba(124, 58, 237, 0.25);
-      border: 1px solid var(--accent-x);
-      border-radius: var(--radius-pill);
-      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-      pointer-events: none;
-    }
-
-    .mode-pill.right { transform: translateX(100%); }
   </style>
 </head>
 <body>
   <div class="app">
     <h1>Tic&#8209;Tac&#8209;Toe</h1>
-    <!-- Mode Toggle -->
+
     <div class="mode-toggle" role="radiogroup" aria-label="Game mode">
-      <button class="mode-option" role="radio" aria-checked="true" id="pvp-btn" onclick="setMode('pvp')">2 Players</button>
-      <button class="mode-option" role="radio" aria-checked="false" id="ai-btn" onclick="setMode('ai')">vs AI</button>
+      <button class="mode-option" role="radio" aria-checked="true"  id="pvp-btn" onclick="setMode('pvp')">2 Players</button>
+      <button class="mode-option" role="radio" aria-checked="false" id="ai-btn"  onclick="setMode('ai')">vs AI</button>
       <div class="mode-pill" id="mode-pill"></div>
     </div>
-    <!-- remaining components added in Tasks 3–8 -->
+
+    <div class="scoreboard" role="region" aria-label="Scores">
+      <div class="score-card x">
+        <div class="score-label" id="x-label">Player X</div>
+        <div class="score-value" id="score-x" aria-live="polite">0</div>
+      </div>
+      <div class="score-card draw">
+        <div class="score-label">Draws</div>
+        <div class="score-value" id="score-draw" aria-live="polite">0</div>
+      </div>
+      <div class="score-card o">
+        <div class="score-label" id="o-label">Player O</div>
+        <div class="score-value" id="score-o" aria-live="polite">0</div>
+      </div>
+    </div>
+
+    <div class="turn-indicator" aria-label="Current turn">
+      <div class="player-badge active" id="badge-x" data-player="X">
+        <span class="badge-symbol">✕</span>
+        <span class="badge-label">Player X</span>
+        <span class="badge-status" id="badge-x-status">Your Turn</span>
+      </div>
+      <div class="player-badge" id="badge-o" data-player="O">
+        <span class="badge-symbol">○</span>
+        <span class="badge-label" id="badge-o-label">Player O</span>
+        <span class="badge-status ai-dots" id="badge-o-status"></span>
+      </div>
+    </div>
+
+    <div class="board" id="board" data-current-player="X" role="grid" aria-label="Tic-Tac-Toe board"></div>
+
+    <button class="new-game-btn" onclick="reset()">New Game</button>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden>
+    <div class="modal-card" id="modal-card">
+      <div class="modal-icon"  id="modal-icon"></div>
+      <h2 class="modal-title"  id="modal-title"></h2>
+      <button class="modal-play-again" id="modal-play-again">Play Again</button>
+    </div>
   </div>
 
   <div aria-live="assertive" class="sr-only" id="announce"></div>
 
   <script>
-    let mode = 'pvp';
+    let mode='pvp',currentPlayer='X',gameOver=false,scores={X:0,O:0,draw:0};
 
-    function setMode(m) {
-      mode = m;
-      const pvpBtn = document.getElementById('pvp-btn');
-      const aiBtn  = document.getElementById('ai-btn');
-      const pill   = document.getElementById('mode-pill');
-      pvpBtn.setAttribute('aria-checked', m === 'pvp');
-      aiBtn.setAttribute('aria-checked',  m === 'ai');
-      pill.classList.toggle('right', m === 'ai');
-      const oLabel = document.getElementById('o-label');
-      const oBadgeLabel = document.getElementById('badge-o-label');
-      if (oLabel)       oLabel.textContent      = m === 'ai' ? 'AI' : 'Player O';
-      if (oBadgeLabel)  oBadgeLabel.textContent = m === 'ai' ? 'AI' : 'Player O';
-      if (typeof reset === 'function') reset();
+    function createXSvg(){
+      const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
+      svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('width','58%');svg.setAttribute('height','58%');svg.setAttribute('aria-hidden','true');
+      [[20,20,80,80,0],[80,20,20,80,80]].forEach(([x1,y1,x2,y2,d])=>{
+        const l=document.createElementNS(ns,'line');
+        l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+        l.setAttribute('stroke','var(--accent-x)');l.setAttribute('stroke-width','8');l.setAttribute('stroke-linecap','round');
+        l.setAttribute('stroke-dasharray','85');l.setAttribute('stroke-dashoffset','85');
+        l.style.animation=`drawLine .25s ease forwards ${d}ms`;svg.appendChild(l);
+      });
+      return svg;
     }
-    // JS for Tasks 3–8 added below
+
+    function createOSvg(){
+      const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
+      svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('width','58%');svg.setAttribute('height','58%');svg.setAttribute('aria-hidden','true');
+      const c=document.createElementNS(ns,'circle');
+      c.setAttribute('cx','50');c.setAttribute('cy','50');c.setAttribute('r','32');c.setAttribute('fill','none');
+      c.setAttribute('stroke','var(--accent-o)');c.setAttribute('stroke-width','8');c.setAttribute('stroke-linecap','round');
+      c.setAttribute('stroke-dasharray','201');c.setAttribute('stroke-dashoffset','201');
+      c.style.animation='drawCircle .3s ease forwards';svg.appendChild(c);
+      return svg;
+    }
+
+    function buildBoard(){
+      const b=document.getElementById('board');b.innerHTML='';
+      for(let i=0;i<9;i++){
+        const r=Math.floor(i/3)+1,col=(i%3)+1,cell=document.createElement('div');
+        cell.className='cell';cell.setAttribute('role','gridcell');cell.setAttribute('tabindex','0');
+        cell.setAttribute('aria-label',`Row ${r}, Column ${col}, empty`);cell.dataset.index=i;
+        cell.addEventListener('click',()=>handleClick(i));
+        cell.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();handleClick(i);}});
+        b.appendChild(cell);
+      }
+    }
+
+    function getCells(){return document.getElementById('board').querySelectorAll('.cell')}
+
+    function renderBoard(bd){
+      const cells=getCells(),bel=document.getElementById('board');
+      cells.forEach((cell,i)=>{
+        const mark=bd[i],r=Math.floor(i/3)+1,col=(i%3)+1;
+        cell.setAttribute('aria-label',`Row ${r}, Column ${col}, ${mark||'empty'}`);
+        if(!mark){cell.className='cell';cell.dataset.mark='';cell.innerHTML='';return;}
+        if(cell.dataset.mark!==mark){
+          cell.className='cell taken';cell.dataset.mark=mark;cell.innerHTML='';
+          cell.appendChild(mark==='X'?createXSvg():createOSvg());
+        }
+      });
+      bel.dataset.currentPlayer=currentPlayer;
+    }
+
+    function highlightWinner(combo){
+      getCells().forEach((c,i)=>combo.includes(i)?c.classList.add('winner-cell'):c.classList.add('dim'));
+    }
+
+    function setActiveBadge(p){
+      document.getElementById('badge-x').classList.toggle('active',p==='X');
+      document.getElementById('badge-o').classList.toggle('active',p==='O');
+      document.getElementById('badge-x-status').textContent=p==='X'?'Your Turn':'';
+      document.getElementById('badge-o-status').textContent=p==='O'?'Your Turn':'';
+    }
+
+    function setAiThinking(on){
+      const bo=document.getElementById('badge-o');
+      bo.classList.toggle('ai-thinking',on);
+      if(on){bo.classList.add('active');document.getElementById('badge-x-status').textContent='';document.getElementById('badge-o-status').textContent='';}
+    }
+
+    function setMode(m){
+      mode=m;
+      document.getElementById('pvp-btn').setAttribute('aria-checked',m==='pvp');
+      document.getElementById('ai-btn').setAttribute('aria-checked',m==='ai');
+      document.getElementById('mode-pill').classList.toggle('right',m==='ai');
+      const ol=document.getElementById('o-label'),obl=document.getElementById('badge-o-label');
+      if(ol)ol.textContent=m==='ai'?'AI':'Player O';
+      if(obl)obl.textContent=m==='ai'?'AI':'Player O';
+      reset();
+    }
+
+    function popScore(el){
+      el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');
+      el.addEventListener('animationend',()=>el.classList.remove('pop'),{once:true});
+    }
+
+    function updateScores(){
+      const sx=document.getElementById('score-x'),so=document.getElementById('score-o'),sd=document.getElementById('score-draw');
+      if(sx.textContent!==String(scores.X)){sx.textContent=scores.X;popScore(sx);}
+      if(so.textContent!==String(scores.O)){so.textContent=scores.O;popScore(so);}
+      if(sd.textContent!==String(scores.draw)){sd.textContent=scores.draw;popScore(sd);}
+    }
+
+    async function handleClick(idx){
+      if(gameOver)return;
+      const cell=getCells()[idx],bel=document.getElementById('board');
+      if(cell.classList.contains('taken'))return;
+      bel.style.pointerEvents='none';
+      if(mode==='ai')setAiThinking(false);
+      const res=await fetch('/move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:idx,player:currentPlayer})});
+      const data=await res.json();
+      bel.style.pointerEvents='';
+      if(data.error)return;
+      renderBoard(data.board);
+      if(data.winner){
+        highlightWinner(data.combo);scores[data.winner]++;updateScores();gameOver=true;
+        const msg=data.winner==='O'&&mode==='ai'?'AI Wins!':(`Player ${data.winner} Wins!`);
+        document.getElementById('announce').textContent=msg;
+        showModal(data.winner,msg,false);return;
+      }
+      if(data.draw){
+        scores.draw++;updateScores();gameOver=true;
+        document.getElementById('announce').textContent="It's a Draw!";
+        showModal(null,"It's a Draw!",true);return;
+      }
+      if(mode==='ai'){currentPlayer='X';setActiveBadge('X');}
+      else{currentPlayer=currentPlayer==='X'?'O':'X';setActiveBadge(currentPlayer);}
+      document.getElementById('board').dataset.currentPlayer=currentPlayer;
+    }
+
+    async function reset(){
+      const res=await fetch('/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode})});
+      const data=await res.json();
+      currentPlayer='X';gameOver=false;renderBoard(data.board);setActiveBadge('X');setAiThinking(false);
+      document.getElementById('board').dataset.currentPlayer='X';
+    }
+
+    const COLORS=['#7c3aed','#06b6d4','#f59e0b','#f472b6','#34d399','#818cf8'];
+
+    function launchConfetti(card){
+      for(let i=0;i<40;i++){
+        const p=document.createElement('div');p.className='confetti-particle';
+        p.style.cssText=`left:${Math.random()*100}%;background:${COLORS[Math.floor(Math.random()*COLORS.length)]};animation-delay:${(Math.random()*.45).toFixed(3)}s;animation-duration:${(.85+Math.random()*.65).toFixed(3)}s;width:${6+Math.floor(Math.random()*7)}px;height:${6+Math.floor(Math.random()*7)}px;transform:rotate(${Math.floor(Math.random()*360)}deg)`;
+        card.appendChild(p);
+      }
+      setTimeout(()=>card.querySelectorAll('.confetti-particle').forEach(p=>p.remove()),1800);
+    }
+
+    function trapFocus(el){
+      const foc=el.querySelectorAll('button,[href],input,[tabindex]:not([tabindex="-1"])'),f=foc[0],l=foc[foc.length-1];
+      el._trap=e=>{if(e.key!=='Tab')return;if(e.shiftKey){if(document.activeElement===f){e.preventDefault();l.focus();}}else{if(document.activeElement===l){e.preventDefault();f.focus();}}};
+      el.addEventListener('keydown',el._trap);
+    }
+
+    function releaseFocus(el){if(el._trap)el.removeEventListener('keydown',el._trap);}
+
+    let _esc=null,_last=null;
+
+    function showModal(winner,msg,isDraw){
+      const ov=document.getElementById('modal-overlay'),card=document.getElementById('modal-card');
+      document.getElementById('modal-icon').textContent=isDraw?'🤝':'🏆';
+      document.getElementById('modal-title').textContent=msg;
+      document.getElementById('modal-play-again').onclick=()=>closeModal(true);
+      ov.removeAttribute('hidden');void ov.offsetWidth;ov.classList.add('visible');
+      if(!isDraw)launchConfetti(card);
+      trapFocus(ov);_last=document.activeElement;
+      document.getElementById('modal-play-again').focus();
+      ov.onclick=e=>{if(e.target===ov)closeModal(false);};
+      _esc=e=>{if(e.key==='Escape')closeModal(false);};
+      document.addEventListener('keydown',_esc);
+    }
+
+    function closeModal(doReset){
+      const ov=document.getElementById('modal-overlay');
+      releaseFocus(ov);if(_esc){document.removeEventListener('keydown',_esc);_esc=null;}
+      ov.classList.remove('visible');
+      setTimeout(()=>{ov.setAttribute('hidden','');if(_last)_last.focus();},300);
+      if(doReset)reset();
+    }
+
+    buildBoard();reset();
   </script>
 </body>
 </html>
