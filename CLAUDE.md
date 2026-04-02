@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 pip install flask
-python app.py
+python3 app.py
 ```
 
 The server starts at `http://127.0.0.1:5000` in debug mode.
